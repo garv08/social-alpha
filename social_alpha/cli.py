@@ -11,7 +11,7 @@ import subprocess
 import sys
 import time
 
-from social_alpha import config, db, evaluate, extract, model, ocr, paper, report, sources
+from social_alpha import config, db, engine, evaluate, extract, model, ocr, paper, report, sources
 from social_alpha.llm import LLM
 from social_alpha.market import IST, Market
 from social_alpha.symbols import SymbolIndex
@@ -71,7 +71,8 @@ def cmd_train(cfg, con, args, market=None):
         bg_built = db.get_meta(con, "background_built")
         if getattr(args, "rebuild_background", False) or not bg_built:
             log("  building background feature vectors (random liquid stock-days)")
-            log(f"  {model.build_background(con, market, cfg, log=log)} background vectors")
+            n = model.build_background(con, market, cfg, cfg.background_symbols, cfg.background_per_symbol, log=log)
+            log(f"  {n} background vectors")
         info = model.train(con, cfg, cfg.data_dir, log)
         log(f"  MADE: {info.get('status')}")
         n = model.score_calls(con, cfg.data_dir)
@@ -107,6 +108,18 @@ def cmd_paper(cfg, con, args, market=None):
     finally:
         if own:
             market.close()
+
+
+def cmd_improve(cfg, con, args):
+    """Propose gates from failures and approve only those that repeat on unseen calls."""
+    res = engine.run(con, cfg, db.get_meta(con, "market_date"))
+    gates = res.get("gates") or {}
+    log(f"  improve: {res.get('status')} cut={res.get('cut')} "
+        f"approved={res.get('approved', 0)} rejected={res.get('rejected', 0)} "
+        f"blocked_authors={gates.get('blocked_authors')} blocked_setups={gates.get('blocked_setups')} "
+        f"require_top_agree={gates.get('require_top_agree')}")
+    log(f"  live deployment: {res.get('live', engine.request_live())['status']}")
+    return res
 
 
 def cmd_report(cfg, con, args, market_date=None):
@@ -160,8 +173,10 @@ def cmd_daily(cfg, con, args):
             model.score_calls(con, cfg.data_dir)
         log("7/8 MADE scan")
         cmd_scan(cfg, con, args, market)
-        log("8/8 paper books")
+        log("8/9 paper books")
         cmd_paper(cfg, con, args, market)
+        log("9/9 improve: evaluate failures, validate proposals, update paper gates")
+        cmd_improve(cfg, con, args)
     finally:
         market.close()
     cmd_report(cfg, con, args, info["latest"])
@@ -195,8 +210,9 @@ def main(argv=None) -> int:
     p.add_argument("--rebuild-background", action="store_true")
     sub.add_parser("scan", help="score today's universe with MADE")
     sub.add_parser("paper", help="step the paper books for the latest trading day")
+    sub.add_parser("improve", help="propose gates and approve only those that repeat out of sample")
     sub.add_parser("report", help="write output/report.html and CSVs")
-    p = sub.add_parser("daily", help="fetch → ingest → TOP sync → extract → evaluate → MADE → paper → report")
+    p = sub.add_parser("daily", help="fetch → ingest → TOP sync → extract → evaluate → MADE → paper → improve → report")
     p.add_argument("--force", action="store_true", help="ignore time/once-a-day checks")
     p.add_argument("--no-fetch", action="store_true")
     p.add_argument("--no-sync", action="store_true", help="do not run top-sync when data is behind")
@@ -206,7 +222,7 @@ def main(argv=None) -> int:
     con = db.connect(cfg.db_path)
     try:
         fn = {"ingest": cmd_ingest, "extract": cmd_extract, "evaluate": cmd_evaluate, "train": cmd_train,
-              "scan": cmd_scan, "paper": cmd_paper, "report": cmd_report, "daily": cmd_daily,
+              "scan": cmd_scan, "paper": cmd_paper, "improve": cmd_improve, "report": cmd_report, "daily": cmd_daily,
               "install-cron": cmd_install_cron,
               "fetch": lambda c, k, a: sources.fetch(c, log),
               "ocr": lambda c, k, a: log(str(ocr.run(k, c.authors, log=log)))}[args.cmd]

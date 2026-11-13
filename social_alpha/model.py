@@ -107,20 +107,24 @@ def train(con, cfg, data_dir, log=print, min_calls=40) -> dict:
     info = {"call_vectors": len(calls), "background_vectors": len(bg)}
     if len(bg) < 200:
         info["status"] = "not enough background vectors"
+        db.set_meta(con, "made_info", json.dumps(info))
         return info
     nin = len(bg[0])
     log(f"  MADE background model: {len(bg)} vectors x {nin} TOP strategies")
     m_bg = MADE(nin, [cfg.made_hidden], num_masks=cfg.made_masks, seed=1)
-    fit_bg = m_bg.fit(bg, epochs=cfg.made_epochs, log=log)
-    info["background"] = {**fit_bg, "independent_nll": round(Independent(bg).nll(bg), 4)}
+    tr, va = MADE.split(bg, seed=1)
+    fit_bg = m_bg.fit(tr, val=va, epochs=cfg.made_epochs, log=log)
+    info["background"] = {**fit_bg, "independent_nll": round(Independent(tr).nll(va), 4) if va else None}
     (data_dir / "made_background.json").write_text(json.dumps(m_bg.to_json()))
     if len(calls) < min_calls:
         info["status"] = f"background trained; only {len(calls)} bullish call vectors (need {min_calls}) for the call model"
+        db.set_meta(con, "made_info", json.dumps(info))
         return info
     log(f"  MADE call model: {len(calls)} vectors")
     m_call = MADE(nin, [max(8, cfg.made_hidden // 2)], num_masks=cfg.made_masks, seed=2)
-    fit_call = m_call.fit(calls, epochs=cfg.made_epochs, weight_decay=1e-3, log=log)
-    info["call"] = {**fit_call, "independent_nll": round(Independent(calls).nll(calls), 4)}
+    tr, va = MADE.split(calls, seed=2)
+    fit_call = m_call.fit(tr, val=va, epochs=cfg.made_epochs, weight_decay=1e-3, log=log)
+    info["call"] = {**fit_call, "independent_nll": round(Independent(tr).nll(va), 4) if va else None}
     (data_dir / "made_calls.json").write_text(json.dumps(m_call.to_json()))
     info["status"] = "trained"
     db.set_meta(con, "made_info", json.dumps(info))

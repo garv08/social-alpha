@@ -149,14 +149,33 @@ class MADE:
                 V[j] = b2 * V[j] + (1 - b2) * g * g
                 b[j] -= lr * (M[j] / c1) / (math.sqrt(V[j] / c2) + eps)
 
-    def fit(self, data, epochs=30, batch_size=32, lr=3e-3, weight_decay=1e-4, val_frac=0.15, patience=4,
-            seed=0, log=None) -> dict:
-        """Adam on mean NLL, cycling the mask each minibatch (as pytorch-made). Early stop on validation NLL."""
-        rng = random.Random(seed)
+    @staticmethod
+    def split(data, val_frac=0.15, seed=0):
         rows = [list(map(float, x)) for x in data]
-        rng.shuffle(rows)
+        random.Random(seed).shuffle(rows)
         n_val = int(len(rows) * val_frac) if len(rows) >= 40 else 0
-        val, train = rows[:n_val], rows[n_val:]
+        return rows[n_val:], rows[:n_val]
+
+    def init_output_bias(self, rows, alpha=1.0):
+        """Start each output at its marginal log-odds, so training begins at the independent-bits model."""
+        n = len(rows)
+        for k in range(self.nin):
+            p = (sum(r[k] for r in rows) + alpha) / (n + 2 * alpha)
+            self.b[-1][k] = math.log(p / (1 - p))
+
+    def fit(self, data, epochs=30, batch_size=32, lr=3e-3, weight_decay=1e-4, val_frac=0.15, patience=4,
+            seed=0, log=None, val=None) -> dict:
+        """Adam on mean NLL, cycling the mask each minibatch (as pytorch-made). Early stop on validation NLL.
+
+        data is split into train/validation unless val is given.
+        """
+        rng = random.Random(seed)
+        if val is None:
+            train, val = self.split(data, val_frac, seed)
+        else:
+            train, val = [list(map(float, x)) for x in data], [list(map(float, x)) for x in val]
+        if self._adam is None and train:
+            self.init_output_bias(train)
         best, best_state, bad, t, hist = float("inf"), None, 0, 0, []
         for ep in range(epochs):
             rng.shuffle(train)

@@ -39,6 +39,8 @@ class Config:
     llm_model: str = ""
     llm_key_env: str = "SOCIAL_ALPHA_LLM_KEY"
     ocr: bool = True
+    background_symbols: int = 120
+    background_per_symbol: int = 30
     made_hidden: int = 48
     made_epochs: int = 30
     made_masks: int = 4

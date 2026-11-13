@@ -131,6 +131,25 @@ td:first-child,th:first-child{{text-align:left}}.muted{{color:#777}}h2{{margin-t
         parts.append(_table(b["orders"], [("symbol", "symbol"), ("side", "side"), ("created", "created"), ("reason", "why")], "orders for next open"))
         parts.append(_table(b["trades"][:20], [("symbol", "symbol"), ("entry_date", "in"), ("exit_date", "out"), ("ret", "return", pct("ret")),
                                               ("pnl", "P&L ₹"), ("exit_reason", "exit"), ("reason", "why")], "recent closed trades"))
+    engine_last = json.loads(db.get_meta(con, "engine_last", "{}") or "{}")
+    if engine_last:
+        gates = engine_last.get("gates") or {}
+        parts.append("<h2>Self-improving loop</h2>")
+        parts.append("<p>TRADE → RECORD → EVALUATE → IMPROVE → VALIDATE → REPEAT. "
+                     "A proposal is approved only when the same failure shows up on later, unseen calls. "
+                     "Approved gates change the paper books. Live trading stays refused.</p>")
+        parts.append(f"<p>Last run {html.escape(str(engine_last.get('date') or ''))}: "
+                     f"{html.escape(str(engine_last.get('status')))}, cut {html.escape(str(engine_last.get('cut')))}, "
+                     f"train n={engine_last.get('n_train')}, unseen n={engine_last.get('n_test')}. "
+                     f"Blocked creators: {html.escape(', '.join(gates.get('blocked_authors') or []) or 'none')}. "
+                     f"Blocked setups: {html.escape(', '.join(gates.get('blocked_setups') or []) or 'none')}. "
+                     f"TOP agreement required: {html.escape(', '.join(gates.get('require_top_agree') or []) or 'none')}.</p>")
+        findings = engine_last.get("findings") or []
+        if findings:
+            parts.append(_table(findings, [("book", "book"), ("n_trades", "closed trades"),
+                                           ("expectancy", "expectancy", pct("expectancy")),
+                                           ("max_drawdown", "max drawdown", pct("max_drawdown")),
+                                           ("note", "note")], "Paper-book evaluation"))
     parts.append("<h2>Creators</h2>")
     parts.append(_table(authors, [("author", "creator")] + stat_cols, "",
                         "Excess = stock return minus Nifty 50 over 20 sessions from the fill, sign-flipped for bearish calls. "
@@ -155,7 +174,7 @@ td:first-child,th:first-child{{text-align:left}}.muted{{color:#777}}h2{{margin-t
     for k in ("background", "call"):
         if k in made_info:
             i = made_info[k]
-            parts.append(f"<p>{k}: best validation NLL {i['best_val_nll']} nats vs independent-bits baseline {i['independent_nll']} "
+            parts.append(f"<p>{k}: best validation NLL {i['best_val_nll']} nats vs independent-bits baseline {i['independent_nll'] or 'n/a'} "
                          f"(train n={i['n_train']}, val n={i['n_val']}, epochs {len(i['history'])}).</p>")
     parts.append(f"<p>Spearman correlation of MADE score at call time with the call's 20d excess return: "
                  f"{_f(rho, nd=3)} (n={n_rho}). Near zero means 'looks like a social call' does not by itself predict returns.</p>")

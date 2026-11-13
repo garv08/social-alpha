@@ -22,7 +22,8 @@ flowchart LR
   M --> N[daily scan:<br/>most call-like stocks]
   S --> P[paper books<br/>copy · ours]
   N --> P
-  P --> R[report.html + CSVs]
+  P --> E["improve<br/>propose → validate → paper gates"]
+  E --> R[report.html + CSVs]
 ```
 
 > [!IMPORTANT]
@@ -57,7 +58,8 @@ flowchart LR
 9. **Paper books** (₹10,000 each, whole shares, long only, orders fill at next open, 10 bps per side):
    - **copy** — bullish calls from creators with ≥ 8 closed 20-day calls and a positive shrunk score, counting only calls that had closed before the day (walk-forward). Uses the post's stop and target, otherwise 8% and 20 sessions.
    - **ours** — TOP strategies with social attention as the filter: stocks with bullish mentions in the last 10 days plus the top MADE scan names; for each, the TOP strategy with the best CAGR ÷ drawdown on prior data; buy when it has just turned long, sell when it turns flat or hits the stop.
-10. **Report** — `output/report.html` and CSVs (creators, setups, themes, symbols, calls, scan, paper trades, sources).
+10. **Improve** — the self-improving loop (see [docs/architecture.md](docs/architecture.md)). Failures in expectancy are turned into proposals. A proposal becomes a paper-book gate only when the same failure repeats on later, unseen calls. Live broker execution is refused.
+11. **Report** — `output/report.html` and CSVs (creators, setups, themes, symbols, calls, scan, paper trades, sources).
 
 ## Install
 
@@ -81,7 +83,9 @@ No NumPy or PyTorch: everything, including MADE, is plain Python, so it runs on 
                                                  # waits for TOP's update, runs anyway on holidays after 23:30
 ```
 
-Single steps: `ingest`, `fetch`, `ocr`, `extract [--redo]`, `evaluate`, `train [--rebuild-background]`, `scan`, `paper`, `report`.
+Single steps: `ingest`, `fetch`, `ocr`, `extract [--redo]`, `evaluate`, `train [--rebuild-background]`, `scan`, `paper`, `improve`, `report`.
+
+The feedback loop is [docs/architecture.md](docs/architecture.md). Notes on the StockMar list, including what was not OCR'd, are in [docs/stockmar-analysis.md](docs/stockmar-analysis.md).
 
 `scripts/scrape_stockmar_missing.py` back-fills a year of posts for list members that have no archive yet (India-focused handles first).
 

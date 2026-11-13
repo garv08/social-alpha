@@ -40,6 +40,8 @@ llm_model = ""               # e.g. "gpt-4o-mini"
 llm_key_env = "SOCIAL_ALPHA_LLM_KEY"
 
 ocr = true                   # used only when the tesseract binary is installed
+background_symbols = 120     # random liquid stocks sampled for the MADE background model
+background_per_symbol = 30
 made_hidden = 48
 made_epochs = 30
 made_masks = 4

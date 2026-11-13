@@ -1,7 +1,8 @@
 """Two paper-trading books, stepped once per new trading day (idempotent).
 
 copy  buy bullish calls from creators whose earlier calls beat the Nifty 50 (walk-forward: only
-      calls whose 20-session window had closed count); stop/target from the post or defaults.
+      calls whose 20-session window had closed count), unless the self-improving loop has blocked
+      that creator or setup on an unseen window; stop/target from the post or defaults.
 ours  TOP's own strategies, with social attention as the stock filter: candidates are stocks with
       recent bullish mentions plus the top MADE "call-like" scan names; for each, pick the TOP
       strategy with the best CAGR / max-drawdown on its history, and buy when that strategy has
@@ -16,7 +17,7 @@ from __future__ import annotations
 
 import json
 
-from social_alpha import db
+from social_alpha import db, engine
 from social_alpha.evaluate import group_stats
 
 BOOKS = ("copy", "ours")
@@ -141,13 +142,17 @@ def _new_orders(con, market, cfg, today, last):
     # copy book: calls posted since the previous step (first run: calls whose signal date is today)
     good = {g["author"]: g for g in group_stats(con, "author", as_of=today, min_n=cfg.copy_min_calls)
             if g["n20"] >= cfg.copy_min_calls and (g["score"] or 0) > cfg.copy_min_score}
+    gates = engine.load_gates(con)
     held = _positions(con, "copy")
-    fresh = con.execute("""SELECT c.*, o.signal_date FROM calls c JOIN outcomes o ON o.call_id = c.id
+    fresh = con.execute("""SELECT c.*, o.signal_date, o.top_agree FROM calls c JOIN outcomes o ON o.call_id = c.id
                            WHERE c.stance = 1 AND c.symbol NOT LIKE 'IDX:%' AND o.signal_date > ? AND o.signal_date <= ?
                            ORDER BY c.ts_utc DESC""", (last or _prev(market, today), today)).fetchall()
     for c in fresh:
         g = good.get(c["author"])
         if g is None or c["symbol"] in held:
+            continue
+        blocked = engine.skip_reason(gates, c["author"], c["setups"], c["top_agree"])
+        if blocked:
             continue
         targets = json.loads(c["targets"] or "[]")
         if _order(con, "copy", c["symbol"], "buy", today, f"@{c['author']} {c['kind']} (score {g['score']:+.3f})",
