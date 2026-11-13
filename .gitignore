@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+# local settings and generated state (posts, calls, models, report) — personal research data
+config.toml
+data/
+output/
+logs/
+scripts/.missing_handles
