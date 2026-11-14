@@ -11,28 +11,84 @@ and adds a **MADE** model (Karpathy's [pytorch-made](https://github.com/karpathy
 
 ```mermaid
 flowchart LR
-  A["social-archiver<br/>X handles · X lists · Telegram"] -->|tweets.json / posts.jsonl| B[ingest]
-  B --> C[extract<br/>symbol · stance · entry/SL/targets<br/>setups · themes]
-  T[(TOP DuckDB<br/>daily OHLC, all scripts)] --> D
-  C --> D[evaluate<br/>fill · stop/target · 5/20/60d vs Nifty]
-  T --> F[TOP 95 strategies<br/>state at each call]
-  F --> D
-  F --> M["MADE<br/>p(calls) vs p(random days)"]
-  D --> S[creator / setup / theme scores]
-  M --> N[daily scan:<br/>most call-like stocks]
-  S --> K["desk<br/>analysts · debate · risk vote"]
-  N --> K
-  K --> P[paper books<br/>copy · ours]
-  P --> E["improve<br/>propose → validate → paper gates"]
-  E --> R[report.html + CSVs]
+  subgraph INGEST["Ingest"]
+    direction TB
+    SA["social-archiver<br/>X handles · X lists · Telegram"]
+    CRON["TOP cron after the close<br/>top-sync · 19:00 IST"]
+    DAY["Daily OHLC<br/>8,000+ NSE/BSE scripts"]
+    MIN["Minute bars<br/>same universe, when stored"]
+    DUCK[("TOP DuckDB")]
+    CRON --> DAY --> DUCK
+    CRON --> MIN --> DUCK
+  end
+
+  subgraph ANALYSTS["Analyst team · rules, as of date D"]
+    direction TB
+    TECH["Technical<br/>95 TOP strategies<br/>bars dated on or before D"]
+    SENT["Sentiment<br/>social calls published by D"]
+    NEWS["News<br/>themes in those posts"]
+    FUND["Fundamentals<br/>abstain · no filings"]
+  end
+
+  subgraph RESEARCH["Research desk"]
+    direction TB
+    BULL["Bull case"]
+    BEAR["Bear case"]
+    RM["Research manager"]
+    BULL --> RM
+    BEAR --> RM
+  end
+
+  subgraph RISK["Risk team"]
+    direction TB
+    AGG["Aggressive"]
+    NEU["Neutral"]
+    CON["Conservative<br/>only this vote opens"]
+  end
+
+  SA --> SENT
+  SA --> NEWS
+  DUCK --> TECH
+  TECH --> BULL
+  SENT --> BULL
+  NEWS --> BULL
+  FUND --> BULL
+  TECH --> BEAR
+  SENT --> BEAR
+  NEWS --> BEAR
+  FUND --> BEAR
+  RM --> TR["Trader<br/>paper proposal"]
+  TR --> AGG
+  TR --> NEU
+  TR --> CON
+  AGG --> PM["Portfolio manager<br/>BUY · OVERWEIGHT · HOLD<br/>UNDERWEIGHT · SELL"]
+  NEU --> PM
+  CON --> PM
+  PM --> PAPER["Paper books · ₹10,000<br/>next open · no broker"]
+  PM --> BT["Backtest<br/>later closes vs Nifty"]
+  PAPER --> LOOP["Improve<br/>unseen-window gates"]
+  LOOP --> PM
 ```
+
+The installed TOP cron writes **daily** OHLC for the full NSE/BSE script list into DuckDB. Minute bars, if a later feed stores them for those same 8,000+ scripts, enter through that same cron path and the same store. The desk still decides after the close, and only on bars dated on or before that day.
 
 > [!IMPORTANT]
 > Research tool, not advice. Social posts are noisy, archives are incomplete, and backtests describe the past. The paper books trade imaginary money.
 
 ## Framework
 
-The processing loop follows [TradingAgents](https://github.com/TauricResearch/TradingAgents) (Tauric Research, arXiv 2412.20138): vendors as of a date, analyst reports, a bull/bear read, a risk vote, a portfolio-manager rating, then a backtest scored on later closes. It does not install that project. LangGraph, LLM APIs, and the US vendors (Yahoo, Alpha Vantage, SEC, FRED, StockTwits) do not fit this machine or the Indian TOP store. The analysts here are rules. The portfolio manager can approve a paper order. It cannot reach a broker.
+The block diagram above is the same firm shape as [TradingAgents](https://github.com/TauricResearch/TradingAgents) (Tauric Research, arXiv 2412.20138): vendors as of a date, four analyst reports, a bull/bear desk, a trader, a three-way risk vote, and a portfolio manager. It does not install that project. LangGraph, LLM APIs, and the US vendors (Yahoo, Alpha Vantage, SEC, FRED, StockTwits) do not fit this machine or the Indian TOP store. The analysts here are rules. The portfolio manager can approve a paper order. It cannot reach a broker.
+
+| TradingAgents role | This repo |
+|---|---|
+| Technical analyst | TOP's 95 strategies on DuckDB bars the cron has already written, dated on or before D |
+| Sentiment analyst | X and Telegram calls published by the end of D |
+| News analyst | Themes extracted from those posts. There is no separate news wire |
+| Fundamentals analyst | Abstains. TOP has no point-in-time filings |
+| Bull / bear researchers | The two sides of `decide()` |
+| Trader | A paper proposal. Not an order router |
+| Risk team | Aggressive, neutral, and conservative. Only the conservative vote can open |
+| Portfolio manager | BUY, OVERWEIGHT, HOLD, UNDERWEIGHT, SELL. Only BUY can open a paper book |
 
 ```
 INGEST  →  PROCESS AS OF DATE D  →  RATE  →  SCORE ON LATER CLOSES  →  PAPER
