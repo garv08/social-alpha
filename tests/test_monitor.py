@@ -3,8 +3,9 @@ import unittest
 from pathlib import Path
 
 from social_alpha import db
+from social_alpha.cli import chart_args
 from social_alpha.config import Config
-from social_alpha.monitor import fetch_bars, status, top20
+from social_alpha.monitor import WEB, fetch_bars, status, top20
 
 
 class MonitorTests(unittest.TestCase):
@@ -31,9 +32,17 @@ class MonitorTests(unittest.TestCase):
         tmp.cleanup()
 
     def test_page_attributes_the_chart_library(self):
-        page = Path("/home/dell/projects/social-alpha/social_alpha/monitor_web/index.html").read_text()
+        page = (WEB / "index.html").read_text()
         self.assertIn("Charting by TradingView", page)
         self.assertNotIn("reverse engineer", page.lower())
+
+    def test_chart_desk_stays_on_this_machine(self):
+        argv = chart_args()
+        self.assertIn("--host", argv)
+        self.assertEqual(argv[argv.index("--host") + 1], "127.0.0.1")
+        self.assertIn("--no-sync", argv)
+        self.assertIn("--no-auto-update", argv)
+        self.assertNotIn("0.0.0.0", argv)
 
 
 if __name__ == "__main__":

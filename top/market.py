@@ -23,9 +23,18 @@ def pin(returns: dict[str, float] | None) -> None:
     _pinned = returns
 
 
+def _missing_store(exc: BaseException) -> bool:
+    return "does not exist" in str(exc)
+
+
 def _key():
-    with store.session() as con:
-        count, last = con.execute("SELECT count(*), max(ts) FROM bars WHERE interval = '1d'").fetchone()
+    try:
+        with store.session() as con:
+            count, last = con.execute("SELECT count(*), max(ts) FROM bars WHERE interval = '1d'").fetchone()
+    except Exception as exc:
+        if not _missing_store(exc):
+            raise
+        return (str(store.DB_PATH), 0, None)
     return (str(store.DB_PATH), int(count or 0), str(last))
 
 
@@ -37,13 +46,18 @@ def daily_returns() -> dict[str, float]:
     with _lock:
         if _cache["key"] == key:
             return _cache["returns"]
-    with store.session() as con:
-        rows = con.execute(
-            """
-            SELECT b.symbol, b.ts, b.close FROM bars b JOIN symbols s ON s.symbol = b.symbol
-            WHERE b.interval = '1d' AND s.universe = 'nifty50' ORDER BY b.symbol, b.ts
-            """
-        ).fetchall()
+    try:
+        with store.session() as con:
+            rows = con.execute(
+                """
+                SELECT b.symbol, b.ts, b.close FROM bars b JOIN symbols s ON s.symbol = b.symbol
+                WHERE b.interval = '1d' AND s.universe = 'nifty50' ORDER BY b.symbol, b.ts
+                """
+            ).fetchall()
+    except Exception as exc:
+        if not _missing_store(exc):
+            raise
+        rows = []
     sums: dict[str, float] = {}
     counts: dict[str, int] = {}
     prev_symbol, prev_close = None, None

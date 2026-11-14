@@ -140,9 +140,16 @@ No NumPy or PyTorch: everything, including MADE, is plain Python, so it runs on 
                                                  # waits for TOP's update, runs anyway on holidays after 23:30
 ```
 
-Single steps: `ingest`, `fetch`, `ocr`, `extract [--redo]`, `evaluate`, `train [--rebuild-background]`, `scan`, `desk`, `validate-desk`, `backtest`, `paper`, `improve`, `report`, `monitor`.
+Single steps: `ingest`, `fetch`, `ocr`, `extract [--redo]`, `evaluate`, `train [--rebuild-background]`, `scan`, `desk`, `validate-desk`, `backtest`, `paper`, `improve`, `report`, `monitor`, `chart`.
 
-`monitor` serves a chart on this machine only (`http://127.0.0.1:8765`). It reads the top 20 from the last scan and draws daily bars from the DuckDB store. `top-sync` updates that store. `top-platform` is the full TOP desk, now started from this repo.
+Two local pages, both bound to this machine:
+
+| Command | Address | What you can check |
+|---|---|---|
+| `social-alpha chart` | [http://127.0.0.1:8000](http://127.0.0.1:8000) | The full TOP desk: every script, study, strategy, backtest, leaderboard, and chart |
+| `social-alpha monitor` | [http://127.0.0.1:8765](http://127.0.0.1:8765) | The paper list and the bars behind the latest scan |
+
+`chart` reads this repo's `data/nse.duckdb`. It does not download history unless you pass `--sync`. `monitor` is the thinner status page. Neither page can place an order.
 
 `validate-desk` strips markup from stored ratings, cancels any open paper buy that does not have a sanitized desk BUY, and checks the technical veto on calls whose 20-day window closed after the cut date. A veto that does not repeat there is recorded and is not allowed to block a paper entry.
 

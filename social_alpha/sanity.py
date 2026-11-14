@@ -13,6 +13,7 @@ import random
 from datetime import date, timedelta
 from pathlib import Path
 
+from top import market
 from top.backtest import run as run_backtest
 from top.indicators import Frame
 from top.strategies import catalog, signal
@@ -150,7 +151,13 @@ def check_strategy(item: dict, frame: Frame, later: Frame) -> dict:
 def run_sanity() -> dict:
     frame = synthetic_frame()
     later = _perturb(frame, CUT)
-    rows = [check_strategy(item, frame, later) for item in catalog()]
+    # Strategies that compare a name with the market must not open the real store.
+    previous = market._pinned
+    market.pin({day: 0.0003 for day in frame.ts})
+    try:
+        rows = [check_strategy(item, frame, later) for item in catalog()]
+    finally:
+        market.pin(previous)
     case_count = len(rows) * len(CHECKS)
     failed_cases = sum(len(row["failures"]) for row in rows)
     return {
