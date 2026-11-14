@@ -12,7 +12,7 @@ TRADE → RECORD → EVALUATE → IMPROVE → VALIDATE → REPEAT
 
 | Stage | In social-alpha | What it is not |
 |---|---|---|
-| 1. Market data | TOP daily OHLC and volume, plus ingested X and Telegram posts | A live tick feed |
+| 1. Market data | This repo's `data/nse.duckdb`: daily OHLC and volume for every script the TOP sync has written, plus ingested X and Telegram posts | A live tick feed, or a second database left in the old TOP checkout |
 | 2. Strategy engine | A rules-only desk: technical (TOP strategies), social, news themes, and a fundamentals note that we have no filings. Bull/bear read, then a risk vote. See `desk.py`. | An order router, or a language-model debate |
 | 3. Backtesting | `evaluate.py`: next-bar fills, stops, targets, excess vs Nifty | A fit on the same days the signal was chosen |
 | 4. Evaluation | Creator/setup scores, t-stat, shrunk score, paper-book expectancy and drawdown | A reason to go live |

@@ -1,7 +1,9 @@
 # Copy to config.toml (git-ignored) and edit. Every key is optional.
 
 # OHLC, indicators and strategies live in the vendored `top` package.
-# `top-sync` writes daily bars for every NSE/BSE script to data/nse.duckdb (not committed).
+# `top-sync` writes daily bars for every NSE/BSE script to data/nse.duckdb.
+# The current store is copied into this repo from TOP. It is not committed:
+# GitHub rejects files over 100 MB.
 top_home = "."
 archiver_home = "/home/dell/.cline/data/workspaces/chat/social-archiver"
 # credentials.env with X_COOKIES / X_USERNAME for social-archiver (read at run time, never copied)

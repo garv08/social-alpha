@@ -5,9 +5,11 @@
 social-alpha joins two local projects:
 
 - **social-archiver** — local scraper for X handles, X lists and Telegram channels (posts + media). It is not a published GitHub repository.
-- **[TOP — Trade Observability Platform](https://github.com/garv08/Trade-Observability-Platform)** — daily OHLC for every NSE/BSE stock, ETF and index in DuckDB, plus 95 backtestable strategies.
+- **[TOP — Trade Observability Platform](https://github.com/garv08/Trade-Observability-Platform)** — included in this repo. The `top` package, its docs, and `data/nse.duckdb` are the market desk. The upstream repository is the source that copy came from.
 
 and adds a **MADE** model (Karpathy's [pytorch-made](https://github.com/karpathy/pytorch-made) masked autoencoder, ported to pure Python) that learns what the technical picture looks like when people post a bullish call.
+
+This repository is a superset of TOP. `top/` is the desk. `data/nse.duckdb` is this repo's own store, copied from TOP on 14 Nov 2026: 8,097 symbols, 7,375,961 daily bars from 2021-11-01 through 2026-11-13, delivery, breadth, and a leaderboard row for each of the 95 strategies. Indicators are not a second table. The 153 studies are computed from those bars by `top/indicators.py`. The database stays on disk and out of git because it is 515 MB, above GitHub's 100 MB file limit.
 
 <p align="center">
   <img src="assets/pipeline.svg" alt="Cron joins social posts to daily OHLC. Strategy bits go to MADE, then a conviction blend ranks the top 20. The backtester scores later closes and does not set the rank." width="100%">
@@ -156,7 +158,7 @@ These are the GitHub repositories this project actually uses or cites. social-ar
 | Repository | What we took | What we did not take |
 |---|---|---|
 | [garv08/social-alpha](https://github.com/garv08/social-alpha) | This paper-research desk | Live broker execution |
-| [garv08/Trade-Observability-Platform](https://github.com/garv08/Trade-Observability-Platform) | Vendored DuckDB store, daily OHLC sync, indicators, 95 strategies, chart desk | The market database. It stays local and gitignored |
+| [garv08/Trade-Observability-Platform](https://github.com/garv08/Trade-Observability-Platform) | The whole desk: `top/`, docs, and the current `data/nse.duckdb` (8,097 symbols, daily bars, 95 strategy leaderboard rows) | A second copy of that database in git. GitHub rejects files over 100 MB, and this store is 515 MB |
 | [karpathy/pytorch-made](https://github.com/karpathy/pytorch-made) | MADE mask and ensemble-of-orderings, ported to pure Python | PyTorch, and any claim that the score is an edge |
 | [TauricResearch/TradingAgents](https://github.com/TauricResearch/TradingAgents) | Analyst, researcher, trader, risk, and portfolio-manager roles, as rules | LangGraph, language-model calls, and US data vendors |
 | [renee-jia/trading-bot](https://github.com/renee-jia/trading-bot) | Published 35/30/20/15 blend, letter grades, 25% name cap, bear cash reserve, vol target that never levers | Private `core/`, Alpaca paper or live execution, and their US results |
