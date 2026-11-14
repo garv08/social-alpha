@@ -1,6 +1,17 @@
-# social-alpha
+<p align="center">
+  <a href="https://github.com/garv08/social-alpha/actions/workflows/ci.yml"><img src="https://github.com/garv08/social-alpha/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue" alt="Python 3.11 to 3.13">
+  <img src="https://img.shields.io/badge/sanity-1045%20checks-success" alt="1045 strategy sanity checks">
+  <img src="https://img.shields.io/badge/trading-paper%20only-black" alt="Paper only">
+  <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT license">
+</p>
 
-**Backtest what people post about Indian stocks on X and Telegram, find which strategies they are really trading, and paper-trade the ideas that hold up — on your own machine.**
+<h1 align="center">social-alpha</h1>
+
+<p align="center">
+  <b>Backtest what people post about Indian stocks. Paper-trade only what still holds up.</b><br>
+  X and Telegram calls, daily NSE/BSE bars, 95 strategies, a MADE score, and a local chart. No broker.
+</p>
 
 social-alpha joins two local projects:
 
@@ -17,8 +28,16 @@ This repository is a superset of TOP. `top/` is the desk. `data/nse.duckdb` is t
 
 Each cron run pulls new X and Telegram posts and joins them to the DuckDB OHLC store. That join becomes a 95-bit strategy state for the day. **MADE**, the masked autoencoder, is trained on those bits from bullish-call days against the same bits on random stock-days. A new day is scored as log p(call) minus log p(background). That score is one input to a **conviction** blend, not an order. The backtester is a separate check: it scores the calls on later closes versus the Nifty, and it does not set the rank. The monitor charts the pick from our own bars. Nothing in the picture sends an order.
 
+<p align="center">
+
+| Desk | Store | Rank | Gate |
+|---|---|---|---|
+| 95 strategies, 153 studies | 8,097 symbols, daily bars | MADE plus a 0–100 conviction score | Sanitized BUY, paper books only |
+
+</p>
+
 > [!IMPORTANT]
-> Research tool, not advice. Social posts are noisy, archives are incomplete, and backtests describe the past. The paper books trade imaginary money.
+> Research tool, not advice. Social posts are noisy, archives are incomplete, and backtests describe the past. The paper books trade imaginary money. The sanity table is a synthetic-bar check, not a market return.
 
 ## Framework
 
@@ -147,9 +166,14 @@ See [config.example.toml](config.example.toml). Main keys: `archive_roots`, `sou
 
 ```bash
 python -m unittest discover -s tests -v
+python -m social_alpha.sanity
 ```
 
-Covers the MADE port (autoregressive masks, exact gradients, normalised probabilities, learning correlations an independent model cannot), symbol matching, call extraction, post timing and the trade simulator.
+CI runs that suite on Python 3.11, 3.12, and 3.13. The strategy sanity is 95 strategies times 11 checks: bounds, signal domain, determinism, no look-ahead, a finite backtest, positive ending equity, costs that cannot raise the return, and a volatility target that never levers. That is 1,045 checks. The latest table is [docs/ci/sanity-metrics.md](docs/ci/sanity-metrics.md). Each CI run also writes the same table to the job summary and uploads `sanity-metrics` as an artifact.
+
+Those numbers are from generated bars. They are not NSE returns, and a pass is not an edge.
+
+The other tests cover the MADE port, symbol matching, call extraction, post timing, and the paper-book simulator.
 
 ## Repositories referred to
 
