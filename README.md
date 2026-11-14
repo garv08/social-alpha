@@ -9,75 +9,18 @@ social-alpha joins two local projects:
 
 and adds a **MADE** model (Karpathy's [pytorch-made](https://github.com/karpathy/pytorch-made) masked autoencoder, ported to pure Python) that learns what the technical picture looks like when people post a bullish call.
 
-```mermaid
-flowchart LR
-  subgraph INGEST["Ingest"]
-    direction TB
-    SA["social-archiver<br/>X handles · X lists · Telegram"]
-    CRON["TOP cron after the close<br/>top-sync · 19:00 IST"]
-    DAY["Daily OHLC<br/>8,000+ NSE/BSE scripts"]
-    MIN["Minute bars<br/>same universe, when stored"]
-    DUCK[("TOP DuckDB")]
-    CRON --> DAY --> DUCK
-    CRON --> MIN --> DUCK
-  end
+<p align="center">
+  <img src="assets/pipeline.svg" alt="Cron pulls new social posts, joins them to the latest OHLC for every script, backtests, and sorts a top 20 paper list" width="100%">
+</p>
 
-  subgraph ANALYSTS["Analyst team · rules, as of date D"]
-    direction TB
-    TECH["Technical<br/>95 TOP strategies<br/>bars dated on or before D"]
-    SENT["Sentiment<br/>social calls published by D"]
-    NEWS["News<br/>themes in those posts"]
-    FUND["Fundamentals<br/>abstain · no filings"]
-  end
-
-  subgraph RESEARCH["Research desk"]
-    direction TB
-    BULL["Bull case"]
-    BEAR["Bear case"]
-    RM["Research manager"]
-    BULL --> RM
-    BEAR --> RM
-  end
-
-  subgraph RISK["Risk team"]
-    direction TB
-    AGG["Aggressive"]
-    NEU["Neutral"]
-    CON["Conservative<br/>only this vote opens"]
-  end
-
-  SA --> SENT
-  SA --> NEWS
-  DUCK --> TECH
-  TECH --> BULL
-  SENT --> BULL
-  NEWS --> BULL
-  FUND --> BULL
-  TECH --> BEAR
-  SENT --> BEAR
-  NEWS --> BEAR
-  FUND --> BEAR
-  RM --> TR["Trader<br/>paper proposal"]
-  TR --> AGG
-  TR --> NEU
-  TR --> CON
-  AGG --> PM["Portfolio manager<br/>BUY · OVERWEIGHT · HOLD<br/>UNDERWEIGHT · SELL"]
-  NEU --> PM
-  CON --> PM
-  PM --> PAPER["Paper books · ₹10,000<br/>next open · no broker"]
-  PM --> BT["Backtest<br/>later closes vs Nifty"]
-  PAPER --> LOOP["Improve<br/>unseen-window gates"]
-  LOOP --> PM
-```
-
-The installed TOP cron writes **daily** OHLC for the full NSE/BSE script list into DuckDB. Minute bars, if a later feed stores them for those same 8,000+ scripts, enter through that same cron path and the same store. The desk still decides after the close, and only on bars dated on or before that day.
+Each cron run pulls social posts since the last run and joins them to the latest OHLC already stored for every NSE/BSE script. That pair goes through the backtester. The output is a sorted top 20 paper list. It is not an order.
 
 > [!IMPORTANT]
 > Research tool, not advice. Social posts are noisy, archives are incomplete, and backtests describe the past. The paper books trade imaginary money.
 
 ## Framework
 
-The block diagram above is the same firm shape as [TradingAgents](https://github.com/TauricResearch/TradingAgents) (Tauric Research, arXiv 2412.20138): vendors as of a date, four analyst reports, a bull/bear desk, a trader, a three-way risk vote, and a portfolio manager. It does not install that project. LangGraph, LLM APIs, and the US vendors (Yahoo, Alpha Vantage, SEC, FRED, StockTwits) do not fit this machine or the Indian TOP store. The analysts here are rules. The portfolio manager can approve a paper order. It cannot reach a broker.
+The picture above is the whole loop: cron, new posts, latest OHLC, backtest, top 20. The desk inside the backtester still follows the [TradingAgents](https://github.com/TauricResearch/TradingAgents) roles (Tauric Research, arXiv 2412.20138), as rules rather than language-model calls. It does not install that project. The portfolio manager can approve a paper name. It cannot reach a broker.
 
 | TradingAgents role | This repo |
 |---|---|
