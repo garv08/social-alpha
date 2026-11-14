@@ -4,7 +4,7 @@
 
 social-alpha joins two local projects:
 
-- **[social-archiver](https://github.com/garv08)** — downloads X handles, X lists and Telegram channels (posts + media).
+- **social-archiver** — local scraper for X handles, X lists and Telegram channels (posts + media). It is not a published GitHub repository.
 - **[TOP — Trade Observability Platform](https://github.com/garv08/Trade-Observability-Platform)** — daily OHLC for every NSE/BSE stock, ETF and index in DuckDB, plus 95 backtestable strategies.
 
 and adds a **MADE** model (Karpathy's [pytorch-made](https://github.com/karpathy/pytorch-made) masked autoencoder, ported to pure Python) that learns what the technical picture looks like when people post a bullish call.
@@ -148,6 +148,22 @@ python -m unittest discover -s tests -v
 ```
 
 Covers the MADE port (autoregressive masks, exact gradients, normalised probabilities, learning correlations an independent model cannot), symbol matching, call extraction, post timing and the trade simulator.
+
+## Repositories referred to
+
+These are the GitHub repositories this project actually uses or cites. social-archiver is local only, so it is not in the table.
+
+| Repository | What we took | What we did not take |
+|---|---|---|
+| [garv08/social-alpha](https://github.com/garv08/social-alpha) | This paper-research desk | Live broker execution |
+| [garv08/Trade-Observability-Platform](https://github.com/garv08/Trade-Observability-Platform) | Vendored DuckDB store, daily OHLC sync, indicators, 95 strategies, chart desk | The market database. It stays local and gitignored |
+| [karpathy/pytorch-made](https://github.com/karpathy/pytorch-made) | MADE mask and ensemble-of-orderings, ported to pure Python | PyTorch, and any claim that the score is an edge |
+| [TauricResearch/TradingAgents](https://github.com/TauricResearch/TradingAgents) | Analyst, researcher, trader, risk, and portfolio-manager roles, as rules | LangGraph, language-model calls, and US data vendors |
+| [renee-jia/trading-bot](https://github.com/renee-jia/trading-bot) | Published 35/30/20/15 blend, letter grades, 25% name cap, bear cash reserve, vol target that never levers | Private `core/`, Alpaca paper or live execution, and their US results |
+| [tradingview/lightweight-charts](https://github.com/tradingview/lightweight-charts) | Unmodified Apache-2.0 chart widget, with the required "Charting by TradingView" link | TradingView's private chart protocol. This project is not affiliated with TradingView |
+| [neurotrader888](https://github.com/neurotrader888) | Some TOP strategy rules, reimplemented from published code onto daily NSE bars | That channel's results, and the original hourly crypto settings |
+
+Credits and licenses are also in [NOTICE.md](NOTICE.md).
 
 ## License
 
