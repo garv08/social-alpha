@@ -41,7 +41,7 @@ class PaperTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.cfg = Config(data_dir=Path(self.tmp.name), output_dir=Path(self.tmp.name), paper_capital=10_000.0,
-                          paper_max_positions=4, copy_min_calls=3, cost_bps=0.0, default_stop_pct=8.0)
+                          paper_max_positions=4, copy_min_calls=3, cost_bps=0.0, default_stop_pct=8.0, desk=False)
         self.con = db.connect(self.cfg.db_path)
         # a creator with 3 closed winning calls before the test window
         for i in range(3):

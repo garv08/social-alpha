@@ -20,14 +20,38 @@ flowchart LR
   F --> M["MADE<br/>p(calls) vs p(random days)"]
   D --> S[creator / setup / theme scores]
   M --> N[daily scan:<br/>most call-like stocks]
-  S --> P[paper books<br/>copy · ours]
-  N --> P
+  S --> K["desk<br/>analysts · debate · risk vote"]
+  N --> K
+  K --> P[paper books<br/>copy · ours]
   P --> E["improve<br/>propose → validate → paper gates"]
   E --> R[report.html + CSVs]
 ```
 
 > [!IMPORTANT]
 > Research tool, not advice. Social posts are noisy, archives are incomplete, and backtests describe the past. The paper books trade imaginary money.
+
+## Framework
+
+The processing loop follows [TradingAgents](https://github.com/TauricResearch/TradingAgents) (Tauric Research, arXiv 2412.20138): vendors as of a date, analyst reports, a bull/bear read, a risk vote, a portfolio-manager rating, then a backtest scored on later closes. It does not install that project. LangGraph, LLM APIs, and the US vendors (Yahoo, Alpha Vantage, SEC, FRED, StockTwits) do not fit this machine or the Indian TOP store. The analysts here are rules. The portfolio manager can approve a paper order. It cannot reach a broker.
+
+```
+INGEST  →  PROCESS AS OF DATE D  →  RATE  →  SCORE ON LATER CLOSES  →  PAPER
+```
+
+| Stage | Command | What it may see |
+|---|---|---|
+| Ingest | `ingest`, `fetch` | X handles, X lists, and Telegram channels already downloaded by social-archiver. Each post keeps its timestamp. |
+| Process | `extract`, `evaluate`, `desk` | Posts published by the end of the as-of day (IST), TOP bars dated on or before that day, and themes from those posts. No filings. Fundamentals abstain. |
+| Backtest | `backtest` | For each bullish call, the desk is rebuilt from creator scores whose 20-session window had already closed. The rating is then scored on the 5/20/60-session excess versus the Nifty 50. |
+| Paper | `paper` | Two ₹10,000 books. An entry needs a sanitized desk BUY. Fills are the next open. |
+
+```bash
+.venv/bin/python -m social_alpha backtest
+.venv/bin/python -m social_alpha backtest --start 2024-01-01 --end 2025-12-31
+.venv/bin/python -m social_alpha validate-desk
+```
+
+`backtest` rewrites the decision grid. It does not place an order. A BUY that looks good on that grid is still only a paper permission. The technical veto is not applied backwards: confirming it uses later windows, so the historical rating records the opposition and does not pretend the veto was already known.
 
 ## What it answers
 
@@ -55,11 +79,12 @@ flowchart LR
    - TOP state at the last close before the post: which of the 95 strategies were long, and the stock's best strategy by CAGR ÷ |max drawdown| on history before that month.
 7. **MADE** — two masked autoencoders over the 95-bit strategy-state vectors: one on bullish calls, one on random liquid stock-days. Retrained weekly; validation loss is reported against an independent-bits baseline so you can see whether it learned anything.
 8. **Scan** — today's state of the ~400 most liquid stocks, ranked by the MADE score.
-9. **Paper books** (₹10,000 each, whole shares, long only, orders fill at next open, 10 bps per side):
+9. **Desk** — the same shape as a research firm ([TradingAgents](https://github.com/TauricResearch/TradingAgents)), without that project's language-model calls or US data vendors. Four rule reports (TOP technical state, social calls, post themes, and an explicit "no filings" fundamentals note) go to a bull/bear read and a risk vote. The portfolio manager rates BUY, OVERWEIGHT, HOLD, UNDERWEIGHT, or SELL. Only BUY can open a paper order. SELL is a note; the existing paper risk rule still places the exit. Nothing in this step calls a broker.
+10. **Paper books** (₹10,000 each, whole shares, long only, orders fill at next open, 10 bps per side):
    - **copy** — bullish calls from creators with ≥ 8 closed 20-day calls and a positive shrunk score, counting only calls that had closed before the day (walk-forward). Uses the post's stop and target, otherwise 8% and 20 sessions.
    - **ours** — TOP strategies with social attention as the filter: stocks with bullish mentions in the last 10 days plus the top MADE scan names; for each, the TOP strategy with the best CAGR ÷ drawdown on prior data; buy when it has just turned long, sell when it turns flat or hits the stop.
-10. **Improve** — the self-improving loop (see [docs/architecture.md](docs/architecture.md)). Failures in expectancy are turned into proposals. A proposal becomes a paper-book gate only when the same failure repeats on later, unseen calls. Live broker execution is refused.
-11. **Report** — `output/report.html` and CSVs (creators, setups, themes, symbols, calls, scan, paper trades, sources).
+11. **Improve** — the self-improving loop (see [docs/architecture.md](docs/architecture.md)). Failures in expectancy are turned into proposals. A proposal becomes a paper-book gate only when the same failure repeats on later, unseen calls. Live broker execution is refused.
+12. **Report** — `output/report.html` and CSVs (creators, setups, themes, symbols, calls, scan, paper trades, sources).
 
 ## Install
 
@@ -83,7 +108,9 @@ No NumPy or PyTorch: everything, including MADE, is plain Python, so it runs on 
                                                  # waits for TOP's update, runs anyway on holidays after 23:30
 ```
 
-Single steps: `ingest`, `fetch`, `ocr`, `extract [--redo]`, `evaluate`, `train [--rebuild-background]`, `scan`, `paper`, `improve`, `report`.
+Single steps: `ingest`, `fetch`, `ocr`, `extract [--redo]`, `evaluate`, `train [--rebuild-background]`, `scan`, `desk`, `validate-desk`, `backtest`, `paper`, `improve`, `report`.
+
+`validate-desk` strips markup from stored ratings, cancels any open paper buy that does not have a sanitized desk BUY, and checks the technical veto on calls whose 20-day window closed after the cut date. A veto that does not repeat there is recorded and is not allowed to block a paper entry.
 
 The feedback loop is [docs/architecture.md](docs/architecture.md). Notes on the StockMar list, including what was not OCR'd, are in [docs/stockmar-analysis.md](docs/stockmar-analysis.md).
 

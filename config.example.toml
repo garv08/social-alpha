@@ -33,6 +33,7 @@ paper_capital = 10000.0
 paper_max_positions = 4
 copy_min_calls = 8           # creator needs this many closed 20-day calls before the copy book follows them
 copy_min_score = 0.0
+desk = true                  # rules-only analyst desk must rate BUY before a paper entry; never calls an LLM or a broker
 
 # Optional LLM fallback (OpenAI-compatible). Key goes in the env var, never in this file.
 llm_url = ""                 # e.g. "https://api.openai.com/v1"

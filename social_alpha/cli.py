@@ -11,7 +11,7 @@ import subprocess
 import sys
 import time
 
-from social_alpha import config, db, engine, evaluate, extract, model, ocr, paper, report, sources
+from social_alpha import config, db, desk, engine, evaluate, extract, model, ocr, paper, replay, report, sources, vendors
 from social_alpha.llm import LLM
 from social_alpha.market import IST, Market
 from social_alpha.symbols import SymbolIndex
@@ -39,6 +39,11 @@ def cmd_ingest(cfg, con, args):
     stats = sources.ingest(con, cfg.archive_roots, cfg.authors, log)
     for name, s in stats.items():
         log(f"  {name:<22} {s['kind']:<9} {s['posts']:>7} posts ({s['new']} new)")
+    row = con.execute("SELECT COUNT(*), MAX(ts_utc) FROM posts WHERE ts_utc > 0").fetchone()
+    db.set_meta(con, "ingest_posts", row[0] or 0)
+    db.set_meta(con, "ingest_latest_ts", row[1] or 0)
+    con.commit()
+    log(f"  ingested {row[0] or 0} posts; later processing may read only those published by its as-of date")
     return stats
 
 
@@ -98,6 +103,39 @@ def cmd_scan(cfg, con, args, market=None):
             market.close()
 
 
+def cmd_desk(cfg, con, args, market=None):
+    """Run the rules-only analyst desk for today's paper candidates. No LLM calls, no broker."""
+    own = market is None
+    market = market or Market(cfg, log).open()
+    try:
+        rows = desk.run(con, market, cfg, log)
+        for r in rows:
+            if r["rating"] != "HOLD":
+                log(f"  {r['book']:<4} {r['symbol']:<16} {r['rating']:<11} {r['reason']}")
+        log(f"  desk reviewed {len(rows)}; buys {sum(r['action'] == 'buy' for r in rows)}")
+        return rows
+    finally:
+        if own:
+            market.close()
+
+
+def cmd_validate_desk(cfg, con, args):
+    """Sanitize stored desk rows and cancel paper buys the desk did not approve."""
+    res = desk.validate(con)
+    ev = res["evidence"]
+    log(f"  desk rows kept {res['desk_rows']}, dropped {res['dropped']}")
+    log(f"  cancelled open buys: {res['cancelled_orders'] or 'none'}")
+    log(f"  live deployment: {res['live']['status']}")
+    if ev.get("status") != "ok":
+        log(f"  veto check: {ev.get('status')} (n={ev.get('n')})")
+        return res
+    kept, vetoed = ev["kept"], ev["vetoed"]
+    log(f"  unseen window from {ev['cut']}: kept n={kept['n']} mean excess {kept['x20_mean']}")
+    log(f"  vetoed n={vetoed['n']} mean excess {vetoed['x20_mean']}")
+    log(f"  veto confirmed: {ev['veto_confirmed']}. {ev['note']}")
+    return res
+
+
 def cmd_paper(cfg, con, args, market=None):
     own = market is None
     market = market or Market(cfg, log).open()
@@ -119,6 +157,16 @@ def cmd_improve(cfg, con, args):
         f"blocked_authors={gates.get('blocked_authors')} blocked_setups={gates.get('blocked_setups')} "
         f"require_top_agree={gates.get('require_top_agree')}")
     log(f"  live deployment: {res.get('live', engine.request_live())['status']}")
+    return res
+
+
+def cmd_backtest(cfg, con, args):
+    """Score desk ratings on later closes, using only data published by each signal date."""
+    snap = vendors.snapshot(con, getattr(args, "end", None))
+    log(f"  vendors as of {snap['as_of']}: {snap['posts_visible']} posts visible, "
+        f"{snap['posts_after_as_of']} later posts withheld, fundamentals abstain")
+    res = replay.run(con, cfg, getattr(args, "start", None), getattr(args, "end", None), log)
+    log(f"  {res['note']}")
     return res
 
 
@@ -145,13 +193,13 @@ def cmd_daily(cfg, con, args):
         return log("another daily run is in progress")
     t0 = time.time()
     if cfg.sources and not args.no_fetch:
-        log("1/8 fetch social posts (social-archiver)")
+        log("1/10 fetch social posts (social-archiver)")
         sources.fetch(cfg, log)
-    log("2/8 ingest archives")
+    log("2/10 ingest archives")
     cmd_ingest(cfg, con, args)
     market = Market(cfg, log).open()
     try:
-        log("3/8 TOP OHLC freshness")
+        log("3/10 TOP OHLC freshness")
         info = market.ensure_fresh(run_sync=not args.no_sync)
         log(f"  TOP data through {info['latest']} (expected {info['expected']})")
         if info["latest"] and info["latest"] < info["expected"] and now.time() < GIVE_UP_AT and not args.force:
@@ -159,23 +207,25 @@ def cmd_daily(cfg, con, args):
         db.set_meta(con, "market_date", info["latest"])
         index = _symbols(cfg, market)
         if cfg.ocr and ocr.available():
-            log("4/8 OCR chart images")
+            log("4/10 OCR chart images")
             log(f"  {ocr.run(con, cfg.authors, log=log)}")
-        log("5/8 extract calls")
+        log("5/10 extract calls")
         cmd_extract(cfg, con, args, index)
-        log("6/8 backtest calls on TOP bars")
+        log("6/10 backtest calls on TOP bars")
         cmd_evaluate(cfg, con, args, market)
         trained = db.get_meta(con, "made_trained")
         if not trained or (dt.date.today() - dt.date.fromisoformat(trained)).days >= 7:
-            log("7/8 train MADE (weekly)")
+            log("7/10 train MADE (weekly)")
             cmd_train(cfg, con, args, market)
         else:
             model.score_calls(con, cfg.data_dir)
-        log("7/8 MADE scan")
+        log("7/10 MADE scan")
         cmd_scan(cfg, con, args, market)
-        log("8/9 paper books")
+        log("8/10 desk: analysts, debate, paper portfolio manager")
+        cmd_desk(cfg, con, args, market)
+        log("9/10 paper books")
         cmd_paper(cfg, con, args, market)
-        log("9/9 improve: evaluate failures, validate proposals, update paper gates")
+        log("10/10 improve: evaluate failures, validate proposals, update paper gates")
         cmd_improve(cfg, con, args)
     finally:
         market.close()
@@ -209,10 +259,15 @@ def main(argv=None) -> int:
     p = sub.add_parser("train", help="build background vectors and train the MADE models")
     p.add_argument("--rebuild-background", action="store_true")
     sub.add_parser("scan", help="score today's universe with MADE")
+    sub.add_parser("desk", help="run the rules-only analyst desk for today's paper candidates")
+    sub.add_parser("validate-desk", help="sanitize desk rows and cancel paper buys the desk did not approve")
+    p = sub.add_parser("backtest", help="score desk ratings on later closes, with no look-ahead")
+    p.add_argument("--start", help="first signal date YYYY-MM-DD")
+    p.add_argument("--end", help="last signal date YYYY-MM-DD")
     sub.add_parser("paper", help="step the paper books for the latest trading day")
     sub.add_parser("improve", help="propose gates and approve only those that repeat out of sample")
     sub.add_parser("report", help="write output/report.html and CSVs")
-    p = sub.add_parser("daily", help="fetch → ingest → TOP sync → extract → evaluate → MADE → paper → improve → report")
+    p = sub.add_parser("daily", help="fetch → ingest → TOP sync → extract → evaluate → MADE → desk → paper → improve → report")
     p.add_argument("--force", action="store_true", help="ignore time/once-a-day checks")
     p.add_argument("--no-fetch", action="store_true")
     p.add_argument("--no-sync", action="store_true", help="do not run top-sync when data is behind")
@@ -222,7 +277,9 @@ def main(argv=None) -> int:
     con = db.connect(cfg.db_path)
     try:
         fn = {"ingest": cmd_ingest, "extract": cmd_extract, "evaluate": cmd_evaluate, "train": cmd_train,
-              "scan": cmd_scan, "paper": cmd_paper, "improve": cmd_improve, "report": cmd_report, "daily": cmd_daily,
+              "scan": cmd_scan, "desk": cmd_desk, "validate-desk": cmd_validate_desk, "backtest": cmd_backtest,
+              "paper": cmd_paper,
+              "improve": cmd_improve, "report": cmd_report, "daily": cmd_daily,
               "install-cron": cmd_install_cron,
               "fetch": lambda c, k, a: sources.fetch(c, log),
               "ocr": lambda c, k, a: log(str(ocr.run(k, c.authors, log=log)))}[args.cmd]

@@ -35,6 +35,7 @@ class Config:
     paper_max_positions: int = 4
     copy_min_calls: int = 8
     copy_min_score: float = 0.0
+    desk: bool = True
     llm_url: str = ""
     llm_model: str = ""
     llm_key_env: str = "SOCIAL_ALPHA_LLM_KEY"

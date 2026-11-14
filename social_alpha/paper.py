@@ -50,6 +50,10 @@ def step(con, market, cfg, log=print) -> dict:
         cash = _cash(con, book, cfg.paper_capital)
         pos = _positions(con, book)
         notes = []
+        if book == "copy" and getattr(cfg, "desk", True):
+            from social_alpha import desk
+            for name in desk.sanitize_open_orders(con):
+                notes.append(f"cancelled uncovered buy {name}")
         # 1. fill orders created before today at today's open
         for o in con.execute("SELECT * FROM paper_orders WHERE book = ? AND status = 'open' AND created < ?", (book, today)).fetchall():
             bars = market.bars(o["symbol"])
@@ -139,6 +143,12 @@ def _order(con, book, symbol, side, today, reason, stop=None, target=None, hold=
 
 def _new_orders(con, market, cfg, today, last):
     made = {"copy": [], "ours": []}
+    desk_verdicts = {}
+    if getattr(cfg, "desk", True):
+        from social_alpha import desk
+        if db.get_meta(con, "desk_date") != today:
+            desk.run(con, market, cfg)
+        desk_verdicts = desk.load(con, today)
     # copy book: calls posted since the previous step (first run: calls whose signal date is today)
     good = {g["author"]: g for g in group_stats(con, "author", as_of=today, min_n=cfg.copy_min_calls)
             if g["n20"] >= cfg.copy_min_calls and (g["score"] or 0) > cfg.copy_min_score}
@@ -155,8 +165,14 @@ def _new_orders(con, market, cfg, today, last):
         if blocked:
             continue
         targets = json.loads(c["targets"] or "[]")
-        if _order(con, "copy", c["symbol"], "buy", today, f"@{c['author']} {c['kind']} (score {g['score']:+.3f})",
-                  c["stop"], targets[0] if targets else None, cfg.max_hold_days, c["post_uid"]):
+        reason = f"@{c['author']} {c['kind']} (score {g['score']:+.3f})"
+        stop, target, hold, ref = c["stop"], targets[0] if targets else None, cfg.max_hold_days, c["post_uid"]
+        if getattr(cfg, "desk", True):
+            verdict = desk_verdicts.get(("copy", c["symbol"]))
+            if verdict is None or verdict["action"] != "buy":
+                continue
+            reason, stop, target, hold, ref = verdict["reason"], verdict.get("stop") or stop, verdict.get("target") or target, verdict.get("hold_days") or hold, verdict.get("ref") or ref
+        if _order(con, "copy", c["symbol"], "buy", today, reason, stop, target, hold, ref):
             made["copy"].append(c["symbol"])
     # ours: strategy exits for held names, then fresh entries
     held = _positions(con, "ours")
@@ -167,6 +183,13 @@ def _new_orders(con, market, cfg, today, last):
         _, sig = market.signals(bars, last_n=600)
         if sig.get(p["ref"]) and sig[p["ref"]][-1] == 0.0:
             _order(con, "ours", sym, "sell", today, f"{p['ref']} turned flat")
+    if getattr(cfg, "desk", True):
+        for (book, sym), verdict in desk_verdicts.items():
+            if book != "ours" or verdict["action"] != "buy" or sym in held:
+                continue
+            if _order(con, "ours", sym, "buy", today, verdict["reason"], None, None, verdict.get("hold_days") or 60, verdict.get("ref")):
+                made["ours"].append(sym)
+        return made
     since = _days_before(today, RECENT_DAYS)
     mentioned = [r[0] for r in con.execute("""SELECT c.symbol FROM calls c JOIN outcomes o ON o.call_id = c.id
                  WHERE c.stance = 1 AND c.symbol NOT LIKE 'IDX:%' AND o.signal_date >= ? GROUP BY c.symbol

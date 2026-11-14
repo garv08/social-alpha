@@ -8,7 +8,7 @@ import html
 import json
 import math
 
-from social_alpha import db, model, paper
+from social_alpha import db, desk, model, paper, replay
 from social_alpha.evaluate import group_stats
 
 
@@ -150,6 +150,26 @@ td:first-child,th:first-child{{text-align:left}}.muted{{color:#777}}h2{{margin-t
                                            ("expectancy", "expectancy", pct("expectancy")),
                                            ("max_drawdown", "max drawdown", pct("max_drawdown")),
                                            ("note", "note")], "Paper-book evaluation"))
+    replay_sum = replay.summary(con)
+    parts.append("<h2>Point-in-time backtest</h2>")
+    parts.append("<p>Each bullish call is rated from data that had closed by its signal date. "
+                 "The score is the later close-to-close excess versus the Nifty 50, not a second cash book. "
+                 f"{html.escape(replay_sum['note'])}</p>")
+    replay_rows = [{"rating": rating, **block} for rating, block in replay_sum["by_rating"].items() if block["n"]]
+    parts.append(_table(replay_rows, [("rating", "rating"), ("n", "scored calls"),
+                                     ("x5_mean", "mean excess 5d", pct("x5_mean")),
+                                     ("x20_mean", "mean excess 20d", pct("x20_mean")),
+                                     ("x60_mean", "mean excess 60d", pct("x60_mean")),
+                                     ("x20_hit", "beat Nifty 20d", pct("x20_hit"))],
+                        "Desk ratings on later closes"))
+    parts.append("<h2>Desk</h2>")
+    parts.append("<p>Rules-only firm shape: technical, social, news-theme and fundamentals reports, "
+                 "then a bull/bear read and a risk vote. Only a BUY rating can open a paper order. "
+                 "No language-model call, and no path to a broker.</p>")
+    parts.append(_table(desk.latest(con, 30),
+                        [("date", "date"), ("book", "book"), ("symbol", "symbol"), ("rating", "rating"),
+                         ("action", "action"), ("reason", "why")],
+                        "Latest desk ratings"))
     parts.append("<h2>Creators</h2>")
     parts.append(_table(authors, [("author", "creator")] + stat_cols, "",
                         "Excess = stock return minus Nifty 50 over 20 sessions from the fill, sign-flipped for bearish calls. "
