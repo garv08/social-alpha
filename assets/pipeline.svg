@@ -1,60 +1,73 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 300" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 360" role="img" aria-labelledby="title desc">
   <title id="title">social-alpha pipeline</title>
-  <desc id="desc">Cron joins new social posts to the DuckDB OHLC store, runs indicators and strategies, backtests, sorts a top 20, and opens a local chart monitor.</desc>
+  <desc id="desc">Cron joins new social posts to daily OHLC. Those become 95 strategy bits. MADE scores the bits. A conviction blend ranks the top 20. The backtester scores later closes and does not set the rank. The monitor charts the pick. Nothing sends an order.</desc>
   <style>
     .box { fill: #f7f7f4; stroke: #222; stroke-width: 1.5; }
     .end { fill: #222; }
     .label { font: 15px system-ui, sans-serif; fill: #222; }
-    .endlabel { font: 15px system-ui, sans-serif; fill: #fff; font-weight: 650; }
+    .endlabel { font: 14px system-ui, sans-serif; fill: #fff; font-weight: 650; }
     .sub { font: 11px system-ui, sans-serif; fill: #555; }
     .endsub { font: 11px system-ui, sans-serif; fill: #ddd; }
-    .arrow { stroke: #222; stroke-width: 1.6; fill: none; }
+    .note { font: 12px system-ui, sans-serif; fill: #333; }
+    .arrow { stroke: #222; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
   </style>
-  <rect width="1080" height="300" fill="#fff"/>
+  <rect width="1100" height="360" fill="#fff"/>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0 0 L7 3 L0 6 Z" fill="#222"/>
+    </marker>
+  </defs>
 
-  <rect class="box" x="20" y="104" width="130" height="72" rx="8"/>
-  <text class="label" x="85" y="134" text-anchor="middle">Cron</text>
-  <text class="sub" x="85" y="154" text-anchor="middle">each run</text>
+  <rect class="box" x="16" y="140" width="112" height="64" rx="8"/>
+  <text class="label" x="72" y="168" text-anchor="middle">Cron</text>
+  <text class="sub" x="72" y="186" text-anchor="middle">each run</text>
 
-  <rect class="box" x="200" y="28" width="180" height="72" rx="8"/>
-  <text class="label" x="290" y="58" text-anchor="middle">Social posts</text>
-  <text class="sub" x="290" y="78" text-anchor="middle">X and Telegram</text>
+  <rect class="box" x="168" y="24" width="156" height="64" rx="8"/>
+  <text class="label" x="246" y="52" text-anchor="middle">Social posts</text>
+  <text class="sub" x="246" y="70" text-anchor="middle">X and Telegram</text>
 
-  <rect class="box" x="200" y="180" width="180" height="72" rx="8"/>
-  <text class="label" x="290" y="208" text-anchor="middle">DuckDB OHLC</text>
-  <text class="sub" x="290" y="228" text-anchor="middle">all NSE/BSE scripts</text>
+  <rect class="box" x="168" y="256" width="156" height="64" rx="8"/>
+  <text class="label" x="246" y="284" text-anchor="middle">DuckDB OHLC</text>
+  <text class="sub" x="246" y="302" text-anchor="middle">daily NSE/BSE</text>
 
-  <rect class="box" x="430" y="104" width="190" height="72" rx="8"/>
-  <text class="label" x="525" y="132" text-anchor="middle">Indicators</text>
-  <text class="sub" x="525" y="152" text-anchor="middle">and 95 strategies</text>
+  <rect class="box" x="364" y="140" width="132" height="64" rx="8"/>
+  <text class="label" x="430" y="168" text-anchor="middle">Join</text>
+  <text class="sub" x="430" y="186" text-anchor="middle">posts + bars</text>
 
-  <rect class="box" x="670" y="104" width="160" height="72" rx="8"/>
-  <text class="label" x="750" y="134" text-anchor="middle">Backtester</text>
-  <text class="sub" x="750" y="154" text-anchor="middle">calls + bars</text>
+  <rect class="box" x="532" y="140" width="124" height="64" rx="8"/>
+  <text class="label" x="594" y="168" text-anchor="middle">95 bits</text>
+  <text class="sub" x="594" y="186" text-anchor="middle">strategies</text>
 
-  <rect class="end" x="880" y="36" width="176" height="64" rx="8"/>
-  <text class="endlabel" x="968" y="62" text-anchor="middle">Top 20</text>
-  <text class="endsub" x="968" y="80" text-anchor="middle">paper list</text>
+  <rect class="box" x="692" y="140" width="124" height="64" rx="8"/>
+  <text class="label" x="754" y="168" text-anchor="middle">MADE</text>
+  <text class="sub" x="754" y="186" text-anchor="middle">call − background</text>
 
-  <rect class="end" x="880" y="180" width="176" height="64" rx="8"/>
-  <text class="endlabel" x="968" y="206" text-anchor="middle">Monitor</text>
-  <text class="endsub" x="968" y="224" text-anchor="middle">local bar chart</text>
+  <rect class="box" x="852" y="140" width="228" height="64" rx="8"/>
+  <text class="label" x="966" y="164" text-anchor="middle">Conviction</text>
+  <text class="sub" x="966" y="182" text-anchor="middle">tech 35, trend 30, social 15, MADE 20</text>
+  <text class="sub" x="966" y="196" text-anchor="middle">25% cap, no leverage</text>
 
-  <path class="arrow" d="M150 140 H175"/>
-  <path class="arrow" d="M175 140 V64 H200"/>
-  <path class="arrow" d="M175 140 V216 H200"/>
-  <path class="arrow" d="M380 64 H405 V140"/>
-  <path class="arrow" d="M380 216 H405 V150"/>
-  <path class="arrow" d="M405 145 H430"/>
-  <path class="arrow" d="M620 140 H670"/>
-  <path class="arrow" d="M830 128 H855 V68 H880"/>
-  <path class="arrow" d="M830 152 H855 V212 H880"/>
+  <rect class="end" x="852" y="24" width="228" height="64" rx="8"/>
+  <text class="endlabel" x="966" y="52" text-anchor="middle">Top 20</text>
+  <text class="endsub" x="966" y="70" text-anchor="middle">ranked paper list</text>
 
-  <path d="M171 136 l8 4 l-8 4 z" fill="#222"/>
-  <path d="M196 60 l8 4 l-8 4 z" fill="#222"/>
-  <path d="M196 212 l8 4 l-8 4 z" fill="#222"/>
-  <path d="M426 141 l8 4 l-8 4 z" fill="#222"/>
-  <path d="M666 136 l8 4 l-8 4 z" fill="#222"/>
-  <path d="M876 64 l8 4 l-8 4 z" fill="#222"/>
-  <path d="M876 208 l8 4 l-8 4 z" fill="#222"/>
+  <rect class="box" x="532" y="256" width="124" height="64" rx="8"/>
+  <text class="label" x="594" y="284" text-anchor="middle">Backtester</text>
+  <text class="sub" x="594" y="302" text-anchor="middle">later closes</text>
+
+  <rect class="end" x="852" y="256" width="228" height="64" rx="8"/>
+  <text class="endlabel" x="966" y="284" text-anchor="middle">Monitor</text>
+  <text class="endsub" x="966" y="302" text-anchor="middle">own bars, paper only</text>
+
+  <path class="arrow" d="M128 172 H364"/>
+  <path class="arrow" d="M246 88 V140 H364"/>
+  <path class="arrow" d="M246 256 V204 H364"/>
+  <path class="arrow" d="M496 172 H532"/>
+  <path class="arrow" d="M656 172 H692"/>
+  <path class="arrow" d="M816 172 H852"/>
+  <path class="arrow" d="M966 140 V88"/>
+  <path class="arrow" d="M966 204 V256"/>
+  <path class="arrow" d="M594 204 V256"/>
+
+  <text class="note" x="16" y="346">Paper only. MADE feeds the rank. The backtester does not. A high score is not an order.</text>
 </svg>

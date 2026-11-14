@@ -15,26 +15,47 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from social_alpha import db, desk
+from social_alpha import conviction, db, desk
 from social_alpha.market import Market
 
 WEB = Path(__file__).resolve().parent / "monitor_web"
 HOST = "127.0.0.1"
 
 
+def _scan_ranked(raw_rows: list[dict]) -> list[dict]:
+    """Fuse a scan into the paper list. Trend is missing unless the row has it."""
+    picked = [row for row in raw_rows if row.get("symbol")][:20]
+    made_units = conviction.made_to_unit([row.get("made_score") for row in picked])
+    fused = []
+    for row, made in zip(picked, made_units):
+        bull = int(row.get("bullish") or 0)
+        bear = int(row.get("bearish") or 0)
+        technical = None if bull + bear == 0 else (bull - bear) / (bull + bear)
+        if "sentiment" in row and row.get("sentiment") is not None:
+            sentiment = row.get("sentiment")
+        else:
+            sentiment = None
+        trend = row.get("trend")
+        scored = conviction.fuse(
+            technical=technical, trend=trend, sentiment=sentiment, made=made,
+            regime=row.get("regime") or "neutral",
+        )
+        missing = ", ".join(scored["missing"]) or "none"
+        fused.append({
+            "symbol": row["symbol"],
+            "score": scored["score"],
+            "grade": scored["grade"],
+            "made_score": row.get("made_score"),
+            "detail": f"{scored['grade']} {scored['score']} missing {missing}",
+            "source": "scan",
+        })
+    return conviction.allocate(fused, regime=(picked[0].get("regime") if picked else "neutral") or "neutral")
+
+
 def top20(con) -> list[dict]:
     """The sorted paper list the pipeline last wrote. Scan first, then desk BUYs."""
     raw = json.loads(db.get_meta(con, "scan_latest", "{}") or "{}")
-    rows = []
-    for row in (raw.get("rows") or [])[:20]:
-        if not row.get("symbol"):
-            continue
-        rows.append({
-            "symbol": row["symbol"],
-            "score": row.get("made_score"),
-            "detail": f"MADE {row.get('made_score')}",
-            "source": "scan",
-        })
+    rows = _scan_ranked(raw.get("rows") or [])
     if rows:
         return rows
     for row in desk.latest(con, 40):

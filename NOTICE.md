@@ -18,5 +18,12 @@
   Scraped posts and media are personal research data and are **not** part of this
   repository. Scraping X/Twitter and Telegram may violate their terms of service;
   keep volumes low and do not republish other people's posts.
+- The conviction blend in `social_alpha/conviction.py` follows the published
+  scoring shape of [renee-jia/trading-bot](https://github.com/renee-jia/trading-bot)
+  (MIT harness): four lenses, a 0–100 score, letter grades, a 25% name cap,
+  a bear-market cash reserve, and a volatility target that never levers.
+  Their private `core/` engine is not in that repository and is not used.
+  Their US equity results are not this system's results. There is no Alpaca
+  executor here.
 - Nothing here is investment advice. Backtests describe the past, and the paper
   books trade imaginary money.

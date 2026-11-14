@@ -52,6 +52,12 @@ The ingest, process, and backtest loop follows the TradingAgents shape, not its 
 
 `social-alpha backtest` does not run inside `daily`. It rewrites `desk_replay` from the calls already evaluated. A BUY in that table is a paper permission. It is not evidence of an edge.
 
+## Conviction rank
+
+`conviction.py` turns a scan row into a 0–100 score. The weights are the published table from [renee-jia/trading-bot](https://github.com/renee-jia/trading-bot), reimplemented on our inputs: technical stance 35%, trend versus the Nifty 30%, social sentiment 15%, MADE rank 20%. A missing lens is 50 and is named. Bear shrinks the score. Bull cannot push it past 100. The top 20 are ladder-weighted with a 25% name cap. A bear book keeps 20% cash. Realized-vol exposure is `min(1, 0.40 / annualized vol)` and never levers.
+
+That score ranks the monitor list. It does not open a paper order. The desk still has to say BUY, and the paper books already size each name as `1 / paper_max_positions` (4, so 25%). Their private scorer, Alpaca route, and published US returns are not imported.
+
 ## Commands
 
 ```bash

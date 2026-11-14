@@ -10,17 +10,17 @@ social-alpha joins two local projects:
 and adds a **MADE** model (Karpathy's [pytorch-made](https://github.com/karpathy/pytorch-made) masked autoencoder, ported to pure Python) that learns what the technical picture looks like when people post a bullish call.
 
 <p align="center">
-  <img src="assets/pipeline.svg" alt="Cron pulls new social posts, joins them to the latest OHLC for every script, backtests, and sorts a top 20 paper list" width="100%">
+  <img src="assets/pipeline.svg" alt="Cron joins social posts to daily OHLC. Strategy bits go to MADE, then a conviction blend ranks the top 20. The backtester scores later closes and does not set the rank." width="100%">
 </p>
 
-Each cron run pulls social posts since the last run and joins them to the DuckDB OHLC store for every NSE/BSE script. Indicators and the 95 strategies sit on those bars. The backtester scores the join. The output is a sorted top 20 paper list, and the monitor charts that name from our own bars. Neither box sends an order.
+Each cron run pulls new X and Telegram posts and joins them to the DuckDB OHLC store. That join becomes a 95-bit strategy state for the day. **MADE**, the masked autoencoder, is trained on those bits from bullish-call days against the same bits on random stock-days. A new day is scored as log p(call) minus log p(background). That score is one input to a **conviction** blend, not an order. The backtester is a separate check: it scores the calls on later closes versus the Nifty, and it does not set the rank. The monitor charts the pick from our own bars. Nothing in the picture sends an order.
 
 > [!IMPORTANT]
 > Research tool, not advice. Social posts are noisy, archives are incomplete, and backtests describe the past. The paper books trade imaginary money.
 
 ## Framework
 
-The picture above is the whole loop: cron, new posts, latest OHLC, backtest, top 20. The desk inside the backtester still follows the [TradingAgents](https://github.com/TauricResearch/TradingAgents) roles (Tauric Research, arXiv 2412.20138), as rules rather than language-model calls. It does not install that project. The portfolio manager can approve a paper name. It cannot reach a broker.
+The picture above is the whole loop: cron, posts, daily OHLC, strategy bits, MADE, conviction, backtest, top 20. The desk inside the backtester still follows the [TradingAgents](https://github.com/TauricResearch/TradingAgents) roles (Tauric Research, arXiv 2412.20138), as rules rather than language-model calls. It does not install that project. The portfolio manager can approve a paper name. It cannot reach a broker.
 
 | TradingAgents role | This repo |
 |---|---|
@@ -51,6 +51,19 @@ INGEST  →  PROCESS AS OF DATE D  →  RATE  →  SCORE ON LATER CLOSES  →  P
 ```
 
 `backtest` rewrites the decision grid. It does not place an order. A BUY that looks good on that grid is still only a paper permission. The technical veto is not applied backwards: confirming it uses later windows, so the historical rating records the opposition and does not pretend the veto was already known.
+
+## Conviction score
+
+The rank on the diagram is not MADE alone. `conviction.py` blends four lenses into 0–100, using the published weights from [renee-jia/trading-bot](https://github.com/renee-jia/trading-bot) and our own inputs. Their private scorer is not in that repo and is not used. Their US results are not ours. There is no Alpaca route.
+
+| Lens | Weight | Here |
+|---|---:|---|
+| Technical | 35% | Bullish minus bearish strategy bits, as a stance |
+| Trend | 30% | Excess versus the Nifty, when the row has it |
+| Sentiment | 15% | Social stance, when the row has it |
+| MADE | 20% | Rank of log p(call) − log p(background) inside the batch |
+
+A missing lens is 50 and is named. Bear shrinks the score. Bull cannot lift it past 100. The top 20 are ladder-weighted, each name at most 25%. A bear book keeps 20% cash. Vol targeting is `min(1, 0.40 / annualized vol)` and never levers. The paper books already size a name as one of four slots. A high score still cannot open an order unless the sanitized desk says BUY.
 
 ## What it answers
 
