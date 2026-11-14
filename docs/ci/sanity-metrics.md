@@ -90,13 +90,13 @@ Synthetic bars. These numbers are sanity results, not market returns.
 | `nt_inverse_hs` | @neurotrader888 | 1 | 7.2 | -13.92 | pass |
 | `nt_bull_flag` | @neurotrader888 | 7 | -12.03 | -12.03 | pass |
 | `nt_hawkes_vol` | @neurotrader888 | 2 | 9.01 | -9.64 | pass |
-| `nt_cmma_index` | @neurotrader888 | 10 | 71.73 | -6.61 | pass |
+| `nt_cmma_index` | @neurotrader888 | 3 | 13.6 | -1.73 | pass |
 | `nt_donchian_runs` | @neurotrader888 | 5 | 13.89 | -14.67 | pass |
 | `nt_rsi_pca` | @neurotrader888 | 0 | 0.0 | 0.0 | pass |
 | `ut_connors_rsi2` | @UnbiasedTradingGoshawk | 5 | -24.69 | -24.69 | pass |
 | `ut_double_seven` | @UnbiasedTradingGoshawk | 6 | -24.44 | -25.17 | pass |
 | `ut_ahl_trend` | @UnbiasedTradingGoshawk | 4 | -11.68 | -21.2 | pass |
-| `ut_lo_contrarian` | @UnbiasedTradingGoshawk | 36 | -11.99 | -12.48 | pass |
+| `ut_lo_contrarian` | @UnbiasedTradingGoshawk | 22 | -11.87 | -11.87 | pass |
 | `tsmom_12m` | Quant research | 2 | 10.13 | -17.6 | pass |
 | `kalman_trend` | Quant research | 12 | 84.98 | -9.08 | pass |
 | `turn_of_month` | Quant research | 18 | 17.69 | -10.68 | pass |

@@ -1106,10 +1106,10 @@
       "checks": 11,
       "passed": 11,
       "failures": [],
-      "trades": 10,
-      "total_return_pct": 71.73,
-      "max_drawdown_pct": -6.61,
-      "ending_equity": 1717278.49,
+      "trades": 3,
+      "total_return_pct": 13.6,
+      "max_drawdown_pct": -1.73,
+      "ending_equity": 1135982.3,
       "buy_hold_pct": 35.87
     },
     {
@@ -1184,10 +1184,10 @@
       "checks": 11,
       "passed": 11,
       "failures": [],
-      "trades": 36,
-      "total_return_pct": -11.99,
-      "max_drawdown_pct": -12.48,
-      "ending_equity": 880128.88,
+      "trades": 22,
+      "total_return_pct": -11.87,
+      "max_drawdown_pct": -11.87,
+      "ending_equity": 881303.96,
       "buy_hold_pct": 58.36
     },
     {
