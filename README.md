@@ -13,7 +13,7 @@ and adds a **MADE** model (Karpathy's [pytorch-made](https://github.com/karpathy
   <img src="assets/pipeline.svg" alt="Cron pulls new social posts, joins them to the latest OHLC for every script, backtests, and sorts a top 20 paper list" width="100%">
 </p>
 
-Each cron run pulls social posts since the last run and joins them to the latest OHLC already stored for every NSE/BSE script. That pair goes through the backtester. The output is a sorted top 20 paper list. It is not an order.
+Each cron run pulls social posts since the last run and joins them to the DuckDB OHLC store for every NSE/BSE script. Indicators and the 95 strategies sit on those bars. The backtester scores the join. The output is a sorted top 20 paper list, and the monitor charts that name from our own bars. Neither box sends an order.
 
 > [!IMPORTANT]
 > Research tool, not advice. Social posts are noisy, archives are incomplete, and backtests describe the past. The paper books trade imaginary money.
@@ -87,13 +87,12 @@ INGEST  →  PROCESS AS OF DATE D  →  RATE  →  SCORE ON LATER CLOSES  →  P
 
 ## Install
 
-Requires Python 3.11–3.13 and a TOP checkout with its data store (`data/nse.duckdb`; see TOP's README for the snapshot).
+Requires Python 3.11–3.13. The TOP desk is the vendored [`top`](top) package in this repo: DuckDB store, daily OHLC sync, indicators, the 95 strategies, and the request-based chart. `top-sync` fills `data/nse.duckdb`. That file is local state, not part of the git history, because it changes every session and is too large to ship.
 
 ```bash
 git clone https://github.com/garv08/social-alpha.git && cd social-alpha
 python3 -m venv .venv
-.venv/bin/pip install -e /path/to/Trade-Observability-Platform   # or let pip fetch TOP from GitHub
-.venv/bin/pip install -e . --no-deps
+.venv/bin/pip install -e .
 cp config.example.toml config.toml                                # set paths, sources, capital
 ```
 
@@ -107,7 +106,9 @@ No NumPy or PyTorch: everything, including MADE, is plain Python, so it runs on 
                                                  # waits for TOP's update, runs anyway on holidays after 23:30
 ```
 
-Single steps: `ingest`, `fetch`, `ocr`, `extract [--redo]`, `evaluate`, `train [--rebuild-background]`, `scan`, `desk`, `validate-desk`, `backtest`, `paper`, `improve`, `report`.
+Single steps: `ingest`, `fetch`, `ocr`, `extract [--redo]`, `evaluate`, `train [--rebuild-background]`, `scan`, `desk`, `validate-desk`, `backtest`, `paper`, `improve`, `report`, `monitor`.
+
+`monitor` serves a chart on this machine only (`http://127.0.0.1:8765`). It reads the top 20 from the last scan and draws daily bars from the DuckDB store. `top-sync` updates that store. `top-platform` is the full TOP desk, now started from this repo.
 
 `validate-desk` strips markup from stored ratings, cancels any open paper buy that does not have a sanitized desk BUY, and checks the technical veto on calls whose 20-day window closed after the cut date. A veto that does not repeat there is recorded and is not allowed to block a paper entry.
 

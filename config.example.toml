@@ -1,6 +1,8 @@
 # Copy to config.toml (git-ignored) and edit. Every key is optional.
 
-top_home = "/home/dell/projects/finance-desktop"          # TOP checkout with data/nse.duckdb
+# OHLC, indicators and strategies live in the vendored `top` package.
+# `top-sync` writes daily bars for every NSE/BSE script to data/nse.duckdb (not committed).
+top_home = "."
 archiver_home = "/home/dell/.cline/data/workspaces/chat/social-archiver"
 # credentials.env with X_COOKIES / X_USERNAME for social-archiver (read at run time, never copied)
 x_cred_file = "/home/dell/.cline/data/workspaces/chat/x-scraper-rohonchain/credentials.env"

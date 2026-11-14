@@ -6,8 +6,14 @@
   Murray & Larochelle, "MADE: Masked Autoencoder for Distribution Estimation",
   ICML 2015 (arXiv:1502.03509). The mask construction and ensemble-of-orderings
   scheme follow that code.
-- Market data, symbols and the 95 strategies come from
-  [TOP — Trade Observability Platform](https://github.com/garv08/Trade-Observability-Platform) (MIT).
+- The `top` package is vendored from
+  [TOP — Trade Observability Platform](https://github.com/garv08/Trade-Observability-Platform)
+  (MIT, Copyright garv08). It is the DuckDB store, OHLC sync, indicators,
+  strategies, and chart desk. Its license is [top/LICENSE](top/LICENSE).
+- Chart drawing uses TradingView Lightweight Charts™ (Apache-2.0), unmodified,
+  in `top/web/vendor/` and `social_alpha/monitor_web/vendor/`. The chart shows
+  the "Charting by TradingView" link. This project is not affiliated with
+  TradingView and does not use TradingView's private chart protocol.
 - Posts are collected with [social-archiver](https://github.com/garv08) outputs.
   Scraped posts and media are personal research data and are **not** part of this
   repository. Scraping X/Twitter and Telegram may violate their terms of service;

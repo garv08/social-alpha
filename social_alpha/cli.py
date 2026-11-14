@@ -11,7 +11,7 @@ import subprocess
 import sys
 import time
 
-from social_alpha import config, db, desk, engine, evaluate, extract, model, ocr, paper, replay, report, sources, vendors
+from social_alpha import config, db, desk, engine, evaluate, extract, model, monitor, ocr, paper, replay, report, sources, vendors
 from social_alpha.llm import LLM
 from social_alpha.market import IST, Market
 from social_alpha.symbols import SymbolIndex
@@ -170,6 +170,11 @@ def cmd_backtest(cfg, con, args):
     return res
 
 
+def cmd_monitor(cfg, con, args):
+    """Serve the local chart monitor. Binds to this machine only."""
+    monitor.serve(cfg, con, getattr(args, "port", 8765))
+
+
 def cmd_report(cfg, con, args, market_date=None):
     res = report.build(con, cfg, market_date or db.get_meta(con, "market_date"))
     log(f"  report: {res['report']}")
@@ -267,6 +272,8 @@ def main(argv=None) -> int:
     sub.add_parser("paper", help="step the paper books for the latest trading day")
     sub.add_parser("improve", help="propose gates and approve only those that repeat out of sample")
     sub.add_parser("report", help="write output/report.html and CSVs")
+    p = sub.add_parser("monitor", help="local chart of backend status and TOP bars; this machine only")
+    p.add_argument("--port", type=int, default=8765)
     p = sub.add_parser("daily", help="fetch → ingest → TOP sync → extract → evaluate → MADE → desk → paper → improve → report")
     p.add_argument("--force", action="store_true", help="ignore time/once-a-day checks")
     p.add_argument("--no-fetch", action="store_true")
@@ -279,7 +286,7 @@ def main(argv=None) -> int:
         fn = {"ingest": cmd_ingest, "extract": cmd_extract, "evaluate": cmd_evaluate, "train": cmd_train,
               "scan": cmd_scan, "desk": cmd_desk, "validate-desk": cmd_validate_desk, "backtest": cmd_backtest,
               "paper": cmd_paper,
-              "improve": cmd_improve, "report": cmd_report, "daily": cmd_daily,
+              "improve": cmd_improve, "report": cmd_report, "monitor": cmd_monitor, "daily": cmd_daily,
               "install-cron": cmd_install_cron,
               "fetch": lambda c, k, a: sources.fetch(c, log),
               "ocr": lambda c, k, a: log(str(ocr.run(k, c.authors, log=log)))}[args.cmd]

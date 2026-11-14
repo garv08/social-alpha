@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 @dataclass
 class Config:
-    top_home: Path = Path("/home/dell/projects/finance-desktop")
+    top_home: Path = ROOT
     top_python: str = ""
     top_api: str = "http://127.0.0.1:8000"
     archiver_home: Path = Path("/home/dell/.cline/data/workspaces/chat/social-archiver")

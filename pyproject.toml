@@ -11,18 +11,25 @@ license = { text = "MIT" }
 requires-python = ">=3.11,<3.14"
 authors = [{ name = "garv08" }]
 keywords = ["nse", "bse", "india", "social-media", "twitter", "telegram", "backtesting", "made", "autoencoder", "paper-trading"]
-# TOP brings duckdb==1.1.3 (pinned for pre-SSE4.2 CPUs). Install it from a local checkout with
-#   pip install -e /path/to/Trade-Observability-Platform
-# or let pip fetch it from GitHub:
-dependencies = [
-  "trade-observability-platform @ git+https://github.com/garv08/Trade-Observability-Platform.git",
-]
+# DuckDB 1.1.3 is pinned because newer builds need SSE4.2 and stop with
+# "illegal instruction" on the machines this project runs on.
+# The TOP desk (store, OHLC sync, indicators, strategies, chart) is the
+# vendored `top` package in this repo. Market data is not shipped; `top-sync`
+# writes it to data/nse.duckdb.
+dependencies = ["duckdb==1.1.3"]
 
 [project.scripts]
 social-alpha = "social_alpha.cli:main"
+top-sync = "top.store:main"
+top-platform = "top.server:main"
+top-leaderboard = "top.leaderboard:main"
 
 [project.urls]
 Homepage = "https://github.com/garv08/social-alpha"
 
 [tool.setuptools.packages.find]
-include = ["social_alpha*"]
+include = ["social_alpha*", "top*"]
+
+[tool.setuptools.package-data]
+social_alpha = ["monitor_web/*.html", "monitor_web/vendor/*"]
+top = ["web/*.html", "web/*.js", "web/*.css", "web/vendor/*"]

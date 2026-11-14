@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>social-alpha monitor</title>
+  <script src="vendor/lightweight-charts.standalone.production.js"></script>
+  <style>
+    body { margin: 0; font: 14px system-ui, sans-serif; background: #0c0e13; color: #d1d4dc; }
+    header { display: flex; justify-content: space-between; gap: 16px; padding: 12px 16px; border-bottom: 1px solid #2a2e39; }
+    .muted { color: #8b90a0; }
+    main { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 78px); }
+    ul { list-style: none; margin: 0; padding: 8px; overflow: auto; }
+    li { padding: 8px; border-radius: 6px; cursor: pointer; }
+    li.on, li:hover { background: #1c2030; }
+    #chart { height: 100%; }
+    a { color: #8ab4f8; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <strong>social-alpha monitor</strong>
+      <div class="muted" id="status">loading backend status</div>
+    </div>
+    <div class="muted">Paper only. <a href="https://www.tradingview.com/" target="_blank" rel="noopener">Charting by TradingView</a></div>
+  </header>
+  <main>
+    <ul id="list"></ul>
+    <div id="chart"></div>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const chart = LightweightCharts.createChart($("chart"), {
+      autoSize: true,
+      layout: { background: { color: "#0c0e13" }, textColor: "#d1d4dc" },
+      grid: { vertLines: { color: "#1c2030" }, horzLines: { color: "#1c2030" } },
+      rightPriceScale: { borderColor: "#2a2e39" },
+      timeScale: { borderColor: "#2a2e39" },
+    });
+    const candles = chart.addCandlestickSeries({
+      upColor: "#089981", downColor: "#f23645", borderUpColor: "#089981", borderDownColor: "#f23645",
+      wickUpColor: "#089981", wickDownColor: "#f23645",
+    });
+    const volume = chart.addHistogramSeries({ priceFormat: { type: "volume" }, priceScaleId: "volume" });
+    chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+
+    async function load(symbol) {
+      const payload = await (await fetch("/api/bars?symbol=" + encodeURIComponent(symbol))).json();
+      const bars = payload.bars || [];
+      candles.setData(bars.map((b) => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
+      volume.setData(bars.map((b) => ({
+        time: b.time,
+        value: b.volume || 0,
+        color: b.close >= b.open ? "rgba(8,153,129,0.45)" : "rgba(242,54,69,0.45)",
+      })));
+      chart.timeScale().fitContent();
+      $("status").textContent = bars.length
+        ? symbol + " · " + bars.length + " daily bars · " + (payload.source || "bars")
+        : symbol + " · no bars (" + (payload.error || "empty") + ")";
+    }
+
+    fetch("/api/status").then((r) => r.json()).then((s) => {
+      $("status").textContent = (s.posts || 0) + " posts · market " + (s.market_date || "—") + " · " + s.deployment;
+      const list = $("list");
+      (s.top20 || []).forEach((row, i) => {
+        const li = document.createElement("li");
+        li.textContent = (i + 1) + ". " + row.symbol;
+        li.onclick = () => {
+          for (const el of list.children) el.classList.remove("on");
+          li.classList.add("on");
+          load(row.symbol);
+        };
+        list.appendChild(li);
+      });
+      if (!list.children.length) list.innerHTML = "<li class='muted'>No top 20 yet. Run scan or desk first.</li>";
+      else list.children[0].click();
+    });
+  </script>
+</body>
+</html>
